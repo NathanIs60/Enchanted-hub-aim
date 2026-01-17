@@ -21,6 +21,8 @@ interface FolderCardProps {
   folder: MediaFolder
   resourceCount: number
   onEdit?: (folder: MediaFolder) => void
+  isDragMode?: boolean
+  onResourceDrop?: (resourceId: string, folderId: string) => void
 }
 
 const colorClasses: Record<string, string> = {
@@ -47,9 +49,34 @@ const iconMap: Record<string, string> = {
   clock: "🕐",
 }
 
-export function FolderCard({ folder, resourceCount, onEdit }: FolderCardProps) {
+export function FolderCard({ folder, resourceCount, onEdit, isDragMode = false, onResourceDrop }: FolderCardProps) {
   const router = useRouter()
   const [isDeleting, setIsDeleting] = useState(false)
+  const [isDragOver, setIsDragOver] = useState(false)
+
+  const handleDragOver = (e: React.DragEvent) => {
+    if (!isDragMode) return
+    e.preventDefault()
+    setIsDragOver(true)
+  }
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    if (!isDragMode) return
+    e.preventDefault()
+    setIsDragOver(false)
+  }
+
+  const handleDrop = (e: React.DragEvent) => {
+    if (!isDragMode) return
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragOver(false)
+    
+    const resourceId = e.dataTransfer.getData("text/plain")
+    if (resourceId && onResourceDrop) {
+      onResourceDrop(resourceId, folder.id)
+    }
+  }
 
   const handleDelete = async () => {
     if (resourceCount > 0) {
@@ -85,7 +112,11 @@ export function FolderCard({ folder, resourceCount, onEdit }: FolderCardProps) {
     }
   }
 
-  const handleClick = () => {
+  const handleClick = (e: React.MouseEvent) => {
+    if (isDragMode) {
+      e.preventDefault()
+      return
+    }
     router.push(`/dashboard/media?folder=${folder.id}`)
   }
 
@@ -93,9 +124,14 @@ export function FolderCard({ folder, resourceCount, onEdit }: FolderCardProps) {
     <Card 
       className={cn(
         "group cursor-pointer transition-all hover:shadow-md",
-        colorClasses[folder.color] || colorClasses.blue
+        colorClasses[folder.color] || colorClasses.blue,
+        isDragMode && "cursor-default",
+        isDragOver && "ring-2 ring-primary ring-offset-2 scale-105"
       )}
       onClick={handleClick}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
     >
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
@@ -119,7 +155,7 @@ export function FolderCard({ folder, resourceCount, onEdit }: FolderCardProps) {
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={(e) => {
                 e.stopPropagation()
-                handleClick()
+                handleClick(e)
               }}>
                 <FolderOpen className="mr-2 h-4 w-4" />
                 Open Folder

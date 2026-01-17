@@ -22,10 +22,13 @@ import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { toast } from "@/hooks/use-toast"
 import { extractYouTubeId, getYouTubeThumbnail } from "@/lib/utils/youtube"
+import { cn } from "@/lib/utils"
 
 interface MediaCardProps {
   resource: Resource
   folders: MediaFolder[]
+  isDragMode?: boolean
+  onDragStart?: (resourceId: string) => void
 }
 
 const typeColors: Record<Resource["resource_type"], string> = {
@@ -35,11 +38,20 @@ const typeColors: Record<Resource["resource_type"], string> = {
   other: "bg-gray-500/10 text-gray-600 dark:text-gray-400",
 }
 
-export function MediaCard({ resource, folders }: MediaCardProps) {
+export function MediaCard({ resource, folders, isDragMode = false, onDragStart }: MediaCardProps) {
   const router = useRouter()
 
   const videoId = resource.resource_type === "youtube" ? extractYouTubeId(resource.url) : null
   const thumbnail = resource.thumbnail_url || (videoId ? getYouTubeThumbnail(videoId) : null)
+
+  const handleDragStart = (e: React.DragEvent) => {
+    if (!isDragMode) {
+      e.preventDefault()
+      return
+    }
+    e.dataTransfer.setData("text/plain", resource.id)
+    onDragStart?.(resource.id)
+  }
 
   const handleDelete = async () => {
     const supabase = createClient()
@@ -106,7 +118,14 @@ export function MediaCard({ resource, folders }: MediaCardProps) {
   const currentFolder = resource.folder_id ? folders.find(f => f.id === resource.folder_id) : null
 
   return (
-    <Card className="group overflow-hidden border-border/50 bg-card/50 backdrop-blur-sm transition-colors hover:bg-card">
+    <Card 
+      className={cn(
+        "group overflow-hidden border-border/50 bg-card/50 backdrop-blur-sm transition-colors hover:bg-card",
+        isDragMode && "cursor-move hover:shadow-lg"
+      )}
+      draggable={isDragMode}
+      onDragStart={handleDragStart}
+    >
       <CardHeader className="p-0">
         <div className="relative aspect-video overflow-hidden bg-muted">
           {thumbnail ? (

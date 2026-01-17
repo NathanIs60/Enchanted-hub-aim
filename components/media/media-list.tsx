@@ -1,17 +1,22 @@
 "use client"
 
 import { useState } from "react"
-import { useSearchParams } from "next/navigation"
+import { useSearchParams, useRouter } from "next/navigation"
 import type { Resource, MediaFolder } from "@/lib/types/database"
 import { MediaCard } from "./media-card"
 import { FolderCard } from "./folder-card"
 import { CreateFolderDialog } from "./create-folder-dialog"
 import { MigrationInfo } from "./migration-info"
+import { RemoveFromFolderZone } from "./drag-drop-zone"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { Search, Youtube, ArrowLeft, Folder } from "lucide-react"
+import { Label } from "@/components/ui/label"
+import { Switch } from "@/components/ui/switch"
+import { Search, Youtube, ArrowLeft, Folder, Move } from "lucide-react"
 import Link from "next/link"
+import { createClient } from "@/lib/supabase/client"
+import { toast } from "@/hooks/use-toast"
 
 interface MediaListProps {
   resources: Resource[]
@@ -22,6 +27,9 @@ interface MediaListProps {
 export function MediaList({ resources, folders, currentFolder }: MediaListProps) {
   const [search, setSearch] = useState("")
   const [activeTab, setActiveTab] = useState("all")
+  const [isDragMode, setIsDragMode] = useState(false)
+  const [draggedResourceId, setDraggedResourceId] = useState<string | null>(null)
+  const router = useRouter()
   const searchParams = useSearchParams()
   const folderId = searchParams.get("folder")
 
@@ -50,6 +58,40 @@ export function MediaList({ resources, folders, currentFolder }: MediaListProps)
     return acc
   }, {} as Record<string, number>)
 
+  const handleResourceDrop = async (resourceId: string, targetFolderId: string | null) => {
+    try {
+      const supabase = createClient()
+      const { error } = await supabase
+        .from("resources")
+        .update({ folder_id: targetFolderId })
+        .eq("id", resourceId)
+
+      if (error) throw error
+
+      const folderName = targetFolderId 
+        ? folders.find(f => f.id === targetFolderId)?.name || "folder"
+        : "main library"
+      
+      toast({
+        title: "Success",
+        description: `Resource moved to ${folderName}`,
+      })
+      
+      router.refresh()
+    } catch (error) {
+      console.error("Error moving resource:", error)
+      toast({
+        title: "Error",
+        description: "Failed to move resource",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleRemoveFromFolder = async (resourceId: string) => {
+    await handleResourceDrop(resourceId, null)
+  }
+
   return (
     <div className="space-y-4">
       {/* Breadcrumb and folder actions */}
@@ -70,7 +112,21 @@ export function MediaList({ resources, folders, currentFolder }: MediaListProps)
             </div>
           )}
         </div>
-        {showFolders && folders.length >= 0 && <CreateFolderDialog />}
+        <div className="flex items-center gap-4">
+          {/* Drag Mode Toggle */}
+          <div className="flex items-center space-x-2">
+            <Switch
+              id="drag-mode"
+              checked={isDragMode}
+              onCheckedChange={setIsDragMode}
+            />
+            <Label htmlFor="drag-mode" className="flex items-center gap-2 text-sm">
+              <Move className="h-4 w-4" />
+              Select
+            </Label>
+          </div>
+          {showFolders && folders.length >= 0 && <CreateFolderDialog />}
+        </div>
       </div>
 
       <div className="relative">
@@ -98,6 +154,8 @@ export function MediaList({ resources, folders, currentFolder }: MediaListProps)
                 key={folder.id}
                 folder={folder}
                 resourceCount={folderResourceCounts[folder.id] || 0}
+                isDragMode={isDragMode}
+                onResourceDrop={handleResourceDrop}
               />
             ))}
           </div>
@@ -126,12 +184,24 @@ export function MediaList({ resources, folders, currentFolder }: MediaListProps)
           ) : (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {filteredResources.map((resource) => (
-                <MediaCard key={resource.id} resource={resource} folders={folders} />
+                <MediaCard 
+                  key={resource.id} 
+                  resource={resource} 
+                  folders={folders}
+                  isDragMode={isDragMode}
+                  onDragStart={setDraggedResourceId}
+                />
               ))}
             </div>
           )}
         </TabsContent>
       </Tabs>
+
+      {/* Remove from folder zone - only show when in a folder and drag mode is active */}
+      <RemoveFromFolderZone 
+        onDrop={handleRemoveFromFolder}
+        isVisible={isDragMode && !!currentFolder && !!draggedResourceId}
+      />
     </div>
   )
 }
