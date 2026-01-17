@@ -59,7 +59,24 @@ export function JournalEntryDialog({ open, onOpenChange, date, existingLog, aims
   }, [existingLog, open])
 
   const handleSave = async () => {
-    if (!date) return
+    if (!date) {
+      toast({
+        title: "Error",
+        description: "Date is required",
+        variant: "destructive",
+      })
+      return
+    }
+
+    // Basic validation
+    if (!content.trim()) {
+      toast({
+        title: "Error",
+        description: "Content is required",
+        variant: "destructive",
+      })
+      return
+    }
 
     setIsLoading(true)
     try {
@@ -68,13 +85,20 @@ export function JournalEntryDialog({ open, onOpenChange, date, existingLog, aims
         data: { user },
       } = await supabase.auth.getUser()
 
-      if (!user) throw new Error("Not authenticated")
+      if (!user) {
+        toast({
+          title: "Error",
+          description: "You must be logged in to save entries",
+          variant: "destructive",
+        })
+        return
+      }
 
       const logData = {
         user_id: user.id,
         log_date: format(date, "yyyy-MM-dd"),
-        title: title || null,
-        content: { blocks: [{ type: "paragraph", data: { text: content } }] },
+        title: title.trim() || null,
+        content: { blocks: [{ type: "paragraph", data: { text: content.trim() } }] },
         mood: mood || null,
         linked_aim_id: linkedAimId || null,
         linked_game_id: linkedGameId || null,
@@ -82,18 +106,35 @@ export function JournalEntryDialog({ open, onOpenChange, date, existingLog, aims
 
       if (existingLog) {
         const { error } = await supabase.from("daily_logs").update(logData).eq("id", existingLog.id)
-        if (error) throw error
-        toast.success("Entry updated")
+        if (error) {
+          console.error("Update error:", error)
+          throw error
+        }
+        toast({
+          title: "Success",
+          description: "Entry updated successfully",
+        })
       } else {
         const { error } = await supabase.from("daily_logs").insert(logData)
-        if (error) throw error
-        toast.success("Entry created")
+        if (error) {
+          console.error("Insert error:", error)
+          throw error
+        }
+        toast({
+          title: "Success",
+          description: "Entry created successfully",
+        })
       }
 
       onOpenChange(false)
       router.refresh()
-    } catch {
-      toast.error("Failed to save entry")
+    } catch (error) {
+      console.error("Save error:", error)
+      toast({
+        title: "Error",
+        description: "Failed to save entry. Please try again.",
+        variant: "destructive",
+      })
     } finally {
       setIsLoading(false)
     }
@@ -106,12 +147,23 @@ export function JournalEntryDialog({ open, onOpenChange, date, existingLog, aims
     try {
       const supabase = createClient()
       const { error } = await supabase.from("daily_logs").delete().eq("id", existingLog.id)
-      if (error) throw error
-      toast.success("Entry deleted")
+      if (error) {
+        console.error("Delete error:", error)
+        throw error
+      }
+      toast({
+        title: "Success",
+        description: "Entry deleted successfully",
+      })
       onOpenChange(false)
       router.refresh()
-    } catch {
-      toast.error("Failed to delete entry")
+    } catch (error) {
+      console.error("Delete error:", error)
+      toast({
+        title: "Error",
+        description: "Failed to delete entry",
+        variant: "destructive",
+      })
     } finally {
       setIsLoading(false)
     }

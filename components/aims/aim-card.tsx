@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react"
 import type { Aim } from "@/lib/types/database"
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -17,6 +18,7 @@ import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { toast } from "@/hooks/use-toast"
 import { format, parseISO } from "date-fns"
+import { EditAimDialog } from "./edit-aim-dialog"
 
 interface AimCardProps {
   aim: Aim
@@ -38,15 +40,23 @@ const priorityColors: Record<Aim["priority"], string> = {
 
 export function AimCard({ aim }: AimCardProps) {
   const router = useRouter()
+  const [editOpen, setEditOpen] = useState(false)
 
   const handleDelete = async () => {
     const supabase = createClient()
     const { error } = await supabase.from("aims").delete().eq("id", aim.id)
 
     if (error) {
-      toast.error("Failed to delete aim")
+      toast({
+        title: "Error",
+        description: "Failed to delete aim",
+        variant: "destructive",
+      })
     } else {
-      toast.success("Aim deleted")
+      toast({
+        title: "Success",
+        description: "Aim deleted",
+      })
       router.refresh()
     }
   }
@@ -93,7 +103,7 @@ export function AimCard({ aim }: AimCardProps) {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setEditOpen(true)}>
               <Edit className="mr-2 h-4 w-4" />
               Edit
             </DropdownMenuItem>
@@ -105,6 +115,8 @@ export function AimCard({ aim }: AimCardProps) {
           </DropdownMenuContent>
         </DropdownMenu>
       </CardFooter>
+
+      <EditAimDialog aim={aim} open={editOpen} onOpenChange={setEditOpen} />
     </Card>
   )
 }

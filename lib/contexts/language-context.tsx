@@ -47,6 +47,17 @@ const translations = {
     "dashboard.writeEntry": "Write Entry",
     "dashboard.addTask": "Add Task",
     
+    // Common
+    "edit": "Edit",
+    "editAim": "Edit Aim",
+    "updateAim": "Update Aim",
+    "updating": "Updating...",
+    "aimUpdated": "Aim updated successfully",
+    "failedToUpdateAim": "Failed to update aim",
+    "enterAimTitle": "Enter aim title",
+    "enterAimDescription": "Enter aim description (optional)",
+    "titleRequired": "Title is required",
+    
     // Aims
     "aims.title": "Aims",
     "aims.description": "Track and manage your goals",
@@ -436,6 +447,17 @@ const translations = {
     "dashboard.addGame": "Oyun Ekle",
     "dashboard.writeEntry": "Günlük Yaz",
     "dashboard.addTask": "Görev Ekle",
+    
+    // Common
+    "edit": "Düzenle",
+    "editAim": "Hedefi Düzenle",
+    "updateAim": "Hedefi Güncelle",
+    "updating": "Güncelleniyor...",
+    "aimUpdated": "Hedef başarıyla güncellendi",
+    "failedToUpdateAim": "Hedef güncellenemedi",
+    "enterAimTitle": "Hedef başlığını girin",
+    "enterAimDescription": "Hedef açıklamasını girin (isteğe bağlı)",
+    "titleRequired": "Başlık gerekli",
     
     // Aims
     "aims.title": "Hedefler",
