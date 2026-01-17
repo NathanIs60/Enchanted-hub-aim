@@ -24,31 +24,58 @@ export function FriendRequestCard({ request, type }: FriendRequestCardProps) {
 
   const handleAccept = async () => {
     setIsLoading(true)
-    const supabase = createClient()
-    await supabase
-      .from("friendships")
-      .update({ status: "accepted", updated_at: new Date().toISOString() })
-      .eq("id", request.id)
-    router.refresh()
+    try {
+      const supabase = createClient()
+      const { error } = await supabase
+        .from("friendships")
+        .update({ status: "accepted", updated_at: new Date().toISOString() })
+        .eq("id", request.id)
+      
+      if (error) {
+        console.error("Error accepting friend request:", error)
+      } else {
+        router.refresh()
+      }
+    } catch (error) {
+      console.error("Failed to accept friend request:", error)
+    }
     setIsLoading(false)
   }
 
   const handleDecline = async () => {
     setIsLoading(true)
-    const supabase = createClient()
-    await supabase
-      .from("friendships")
-      .update({ status: "declined", updated_at: new Date().toISOString() })
-      .eq("id", request.id)
-    router.refresh()
+    try {
+      const supabase = createClient()
+      const { error } = await supabase
+        .from("friendships")
+        .update({ status: "declined", updated_at: new Date().toISOString() })
+        .eq("id", request.id)
+      
+      if (error) {
+        console.error("Error declining friend request:", error)
+      } else {
+        router.refresh()
+      }
+    } catch (error) {
+      console.error("Failed to decline friend request:", error)
+    }
     setIsLoading(false)
   }
 
   const handleCancel = async () => {
     setIsLoading(true)
-    const supabase = createClient()
-    await supabase.from("friendships").delete().eq("id", request.id)
-    router.refresh()
+    try {
+      const supabase = createClient()
+      const { error } = await supabase.from("friendships").delete().eq("id", request.id)
+      
+      if (error) {
+        console.error("Error canceling friend request:", error)
+      } else {
+        router.refresh()
+      }
+    } catch (error) {
+      console.error("Failed to cancel friend request:", error)
+    }
     setIsLoading(false)
   }
 

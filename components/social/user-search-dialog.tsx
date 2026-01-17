@@ -51,27 +51,36 @@ export function UserSearchDialog({ open, onOpenChange, currentUserId }: UserSear
 
   useEffect(() => {
     const loadExistingRelationships = async () => {
-      const supabase = createClient()
+      try {
+        const supabase = createClient()
 
-      const { data: friendships } = await supabase
-        .from("friendships")
-        .select("requester_id, addressee_id, status")
-        .or(`requester_id.eq.${currentUserId},addressee_id.eq.${currentUserId}`)
+        const { data: friendships, error } = await supabase
+          .from("friendships")
+          .select("requester_id, addressee_id, status")
+          .or(`requester_id.eq.${currentUserId},addressee_id.eq.${currentUserId}`)
 
-      const friends = new Set<string>()
-      const pending = new Set<string>()
-
-      friendships?.forEach((f) => {
-        const otherId = f.requester_id === currentUserId ? f.addressee_id : f.requester_id
-        if (f.status === "accepted") {
-          friends.add(otherId)
-        } else if (f.status === "pending" && f.requester_id === currentUserId) {
-          pending.add(otherId)
+        if (error) {
+          console.warn("Could not load existing relationships:", error)
+          return
         }
-      })
 
-      setExistingFriends(friends)
-      setSentRequests(pending)
+        const friends = new Set<string>()
+        const pending = new Set<string>()
+
+        friendships?.forEach((f) => {
+          const otherId = f.requester_id === currentUserId ? f.addressee_id : f.requester_id
+          if (f.status === "accepted") {
+            friends.add(otherId)
+          } else if (f.status === "pending" && f.requester_id === currentUserId) {
+            pending.add(otherId)
+          }
+        })
+
+        setExistingFriends(friends)
+        setSentRequests(pending)
+      } catch (error) {
+        console.warn("Error loading relationships:", error)
+      }
     }
 
     if (open) {
@@ -82,25 +91,36 @@ export function UserSearchDialog({ open, onOpenChange, currentUserId }: UserSear
   const handleSendRequest = async (userId: string) => {
     const supabase = createClient()
 
-    const { error } = await supabase.from("friendships").insert({
-      requester_id: currentUserId,
-      addressee_id: userId,
-      status: "pending",
-    })
+    try {
+      const { error } = await supabase.from("friendships").insert({
+        requester_id: currentUserId,
+        addressee_id: userId,
+        status: "pending",
+      })
 
-    if (!error) {
+      if (error) {
+        console.error("Error sending friend request:", error)
+        return
+      }
+
       setSentRequests((prev) => new Set([...prev, userId]))
 
       // Create notification for the other user
-      await supabase.from("notifications").insert({
-        user_id: userId,
-        type: "friend_request",
-        title: "New Friend Request",
-        message: "You have a new friend request!",
-        data: { from_user_id: currentUserId },
-      })
+      try {
+        await supabase.from("notifications").insert({
+          user_id: userId,
+          type: "friend_request",
+          title: "New Friend Request",
+          message: "You have a new friend request!",
+          data: { from_user_id: currentUserId },
+        })
+      } catch (notificationError) {
+        console.warn("Could not create notification:", notificationError)
+      }
 
       router.refresh()
+    } catch (error) {
+      console.error("Failed to send friend request:", error)
     }
   }
 
