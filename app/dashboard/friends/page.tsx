@@ -22,7 +22,26 @@ export default async function FriendsPage() {
   let hasError = false
   let errorMessage = ""
   
+  console.log("Debug - User ID:", user.id)
+  console.log("Debug - Attempting to fetch friendships...")
+  
   try {
+    // First, let's test if we can access any table
+    const { data: testData, error: testError } = await supabase
+      .from("profiles")
+      .select("id")
+      .limit(1)
+    
+    console.log("Debug - Profiles test:", { testData, testError })
+    
+    // Try a simple friendships query first
+    const { data: simpleFriendships, error: simpleError } = await supabase
+      .from("friendships")
+      .select("*")
+      .limit(1)
+    
+    console.log("Debug - Simple friendships test:", { simpleFriendships, simpleError })
+    
     const { data: friendshipsData, error: friendshipsError } = await supabase
       .from("friendships")
       .select(
@@ -34,17 +53,34 @@ export default async function FriendsPage() {
       )
       .or(`requester_id.eq.${user.id},addressee_id.eq.${user.id}`)
 
+    console.log("Debug - Friendships query result:", { friendshipsData, friendshipsError })
+
+    console.log("Debug - Friendships query result:", { friendshipsData, friendshipsError })
+
     if (friendshipsError) {
       console.error("Error fetching friendships:", friendshipsError)
-      errorMessage = friendshipsError.message
-      if (friendshipsError.message.includes("relation") && friendshipsError.message.includes("does not exist")) {
-        hasError = true
-      } else if (friendshipsError.code === "42P01") {
-        // PostgreSQL error code for undefined table
+      console.error("Error details:", {
+        message: friendshipsError.message,
+        code: friendshipsError.code,
+        details: friendshipsError.details,
+        hint: friendshipsError.hint,
+        full_error: JSON.stringify(friendshipsError, null, 2)
+      })
+      errorMessage = friendshipsError.message || "Unknown database error"
+      
+      // Check for various error conditions that indicate missing table
+      if (
+        friendshipsError.message?.includes("relation") && friendshipsError.message?.includes("does not exist") ||
+        friendshipsError.code === "42P01" ||
+        friendshipsError.code === "PGRST116" ||
+        friendshipsError.message?.includes("does not exist") ||
+        friendshipsError.message?.includes("table") && friendshipsError.message?.includes("friendships")
+      ) {
         hasError = true
       }
     } else {
       friendships = friendshipsData || []
+      console.log("Debug - Successfully fetched friendships:", friendships.length)
     }
   } catch (error: any) {
     console.error("Friends feature error:", error)

@@ -77,7 +77,8 @@ CREATE INDEX IF NOT EXISTS idx_friendships_status ON friendships(status);
           </CardTitle>
         </div>
         <CardDescription className="text-blue-700 dark:text-blue-300">
-          To use the friends and social features, you need to run a database migration first.
+          To use the friends and social features, you need to run a database migration first. 
+          The error "Error fetching friendships: {}" means the friendships table doesn't exist in your database.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
