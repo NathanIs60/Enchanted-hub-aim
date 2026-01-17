@@ -24,6 +24,7 @@ export default async function FriendsPage() {
   
   console.log("Debug - User ID:", user.id)
   console.log("Debug - Attempting to fetch friendships...")
+  console.log("Debug - Supabase client:", !!supabase)
   
   try {
     // First, let's test if we can access any table
@@ -32,7 +33,14 @@ export default async function FriendsPage() {
       .select("id")
       .limit(1)
     
-    console.log("Debug - Profiles test:", { testData, testError })
+    console.log("Debug - Profiles test:", { testData: testData?.length, testError })
+    
+    // Check if friendships table exists by trying to access it
+    const { data: tableCheck, error: tableError } = await supabase
+      .from("friendships")
+      .select("count", { count: "exact", head: true })
+    
+    console.log("Debug - Table existence check:", { tableCheck, tableError })
     
     // Try a simple friendships query first
     const { data: simpleFriendships, error: simpleError } = await supabase
@@ -41,6 +49,13 @@ export default async function FriendsPage() {
       .limit(1)
     
     console.log("Debug - Simple friendships test:", { simpleFriendships, simpleError })
+    
+    // If simple query also fails, definitely a missing table
+    if (simpleError) {
+      console.error("Simple friendships query failed:", simpleError)
+      hasError = true
+      errorMessage = "Friendships table does not exist"
+    }
     
     const { data: friendshipsData, error: friendshipsError } = await supabase
       .from("friendships")
@@ -59,25 +74,30 @@ export default async function FriendsPage() {
 
     if (friendshipsError) {
       console.error("Error fetching friendships:", friendshipsError)
-      console.error("Error details:", {
-        message: friendshipsError.message,
-        code: friendshipsError.code,
-        details: friendshipsError.details,
-        hint: friendshipsError.hint,
-        full_error: JSON.stringify(friendshipsError, null, 2)
-      })
-      errorMessage = friendshipsError.message || "Unknown database error"
+      console.error("Error type:", typeof friendshipsError)
+      console.error("Error constructor:", friendshipsError.constructor.name)
+      console.error("Error keys:", Object.keys(friendshipsError))
+      console.error("Error values:", Object.values(friendshipsError))
       
-      // Check for various error conditions that indicate missing table
-      if (
-        friendshipsError.message?.includes("relation") && friendshipsError.message?.includes("does not exist") ||
-        friendshipsError.code === "42P01" ||
-        friendshipsError.code === "PGRST116" ||
-        friendshipsError.message?.includes("does not exist") ||
-        friendshipsError.message?.includes("table") && friendshipsError.message?.includes("friendships")
-      ) {
-        hasError = true
+      // Try different ways to extract error info
+      const errorInfo = {
+        message: friendshipsError.message || friendshipsError.msg || friendshipsError.error || "Unknown error",
+        code: friendshipsError.code || friendshipsError.status || friendshipsError.statusCode,
+        details: friendshipsError.details || friendshipsError.detail,
+        hint: friendshipsError.hint,
+        full_error: JSON.stringify(friendshipsError, null, 2),
+        string_representation: String(friendshipsError),
+        error_toString: friendshipsError.toString()
       }
+      
+      console.error("Processed error details:", errorInfo)
+      
+      errorMessage = errorInfo.message
+      
+      // Since we're getting an empty error object, assume it's a missing table
+      // This is likely a Supabase client issue where the table doesn't exist
+      hasError = true
+      
     } else {
       friendships = friendshipsData || []
       console.log("Debug - Successfully fetched friendships:", friendships.length)
@@ -90,6 +110,8 @@ export default async function FriendsPage() {
 
   // If there's an error (likely missing table), show migration info
   if (hasError) {
+    const displayError = errorMessage || "Database table 'friendships' does not exist"
+    
     return (
       <div className="space-y-6">
         <div>
@@ -98,7 +120,10 @@ export default async function FriendsPage() {
         </div>
         <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg dark:bg-red-950/20 dark:border-red-800">
           <p className="text-sm text-red-700 dark:text-red-300">
-            <strong>Database Error:</strong> {errorMessage}
+            <strong>Database Error:</strong> {displayError}
+          </p>
+          <p className="text-xs text-red-600 dark:text-red-400 mt-2">
+            This usually means the friendships table hasn't been created yet. Please run the migration script below.
           </p>
         </div>
         <FriendsMigrationInfo />
