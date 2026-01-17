@@ -100,6 +100,9 @@ export function UserSearchDialog({ open, onOpenChange, currentUserId }: UserSear
 
       if (error) {
         console.error("Error sending friend request:", error)
+        if (error.message.includes("relation") && error.message.includes("does not exist")) {
+          alert("Friends feature is not set up. Please run the database migration first.")
+        }
         return
       }
 
@@ -119,8 +122,9 @@ export function UserSearchDialog({ open, onOpenChange, currentUserId }: UserSear
       }
 
       router.refresh()
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to send friend request:", error)
+      alert("Failed to send friend request. Please check if the friends feature is set up.")
     }
   }
 

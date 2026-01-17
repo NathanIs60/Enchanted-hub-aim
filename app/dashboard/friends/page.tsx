@@ -20,6 +20,7 @@ export default async function FriendsPage() {
   // Try to get user's friendships with error handling
   let friendships: any[] = []
   let hasError = false
+  let errorMessage = ""
   
   try {
     const { data: friendshipsData, error: friendshipsError } = await supabase
@@ -35,14 +36,19 @@ export default async function FriendsPage() {
 
     if (friendshipsError) {
       console.error("Error fetching friendships:", friendshipsError)
+      errorMessage = friendshipsError.message
       if (friendshipsError.message.includes("relation") && friendshipsError.message.includes("does not exist")) {
+        hasError = true
+      } else if (friendshipsError.code === "42P01") {
+        // PostgreSQL error code for undefined table
         hasError = true
       }
     } else {
       friendships = friendshipsData || []
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error("Friends feature error:", error)
+    errorMessage = error.message || "Unknown error"
     hasError = true
   }
 
@@ -53,6 +59,11 @@ export default async function FriendsPage() {
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Friends</h2>
           <p className="text-muted-foreground">Connect with other NathanIs users</p>
+        </div>
+        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg dark:bg-red-950/20 dark:border-red-800">
+          <p className="text-sm text-red-700 dark:text-red-300">
+            <strong>Database Error:</strong> {errorMessage}
+          </p>
         </div>
         <FriendsMigrationInfo />
       </div>

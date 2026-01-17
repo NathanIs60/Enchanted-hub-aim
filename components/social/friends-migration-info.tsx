@@ -43,7 +43,11 @@ CREATE POLICY "friendships_delete_own" ON friendships
 -- Indexes for performance
 CREATE INDEX IF NOT EXISTS idx_friendships_requester ON friendships(requester_id);
 CREATE INDEX IF NOT EXISTS idx_friendships_addressee ON friendships(addressee_id);
-CREATE INDEX IF NOT EXISTS idx_friendships_status ON friendships(status);`
+CREATE INDEX IF NOT EXISTS idx_friendships_status ON friendships(status);
+
+-- Test the table (optional - you can run this to verify)
+-- SELECT 'Friendships table created successfully!' as message;
+-- SELECT COUNT(*) as friendship_count FROM friendships;`
 
   const handleCopy = async () => {
     try {
@@ -81,10 +85,13 @@ CREATE INDEX IF NOT EXISTS idx_friendships_status ON friendships(status);`
           <Info className="h-4 w-4" />
           <AlertTitle>How to enable friends:</AlertTitle>
           <AlertDescription className="mt-2 space-y-2">
-            <div>1. Go to your Supabase dashboard</div>
-            <div>2. Navigate to SQL Editor</div>
-            <div>3. Copy and run the migration script below</div>
-            <div>4. Refresh this page</div>
+            <div><strong>1.</strong> Go to your Supabase dashboard</div>
+            <div><strong>2.</strong> Navigate to SQL Editor</div>
+            <div><strong>3.</strong> Copy and run the migration script below</div>
+            <div><strong>4.</strong> Refresh this page</div>
+            <div className="mt-3 p-2 bg-yellow-50 dark:bg-yellow-950/20 rounded border border-yellow-200 dark:border-yellow-800">
+              <strong>Note:</strong> If you see "Error fetching friendships: {}", it means the friendships table doesn't exist yet.
+            </div>
           </AlertDescription>
         </Alert>
 

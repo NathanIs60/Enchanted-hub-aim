@@ -22,6 +22,17 @@ export function FriendsView({ friends, pendingRequests, sentRequests, currentUse
   const [searchOpen, setSearchOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
 
+  // Debug: Log the data we received
+  console.log("FriendsView Debug:", {
+    friends: friends.length,
+    pendingRequests: pendingRequests.length,
+    sentRequests: sentRequests.length,
+    currentUserId,
+    friendsData: friends,
+    pendingData: pendingRequests,
+    sentData: sentRequests
+  })
+
   const filteredFriends = friends.filter(
     (f) =>
       f.friend?.display_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
