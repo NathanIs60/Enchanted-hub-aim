@@ -12,17 +12,29 @@ export function FriendsMigrationInfo() {
   const [copied, setCopied] = useState(false)
 
   const migrationScript = `-- Run this in your Supabase SQL Editor
--- Friendships table
-CREATE TABLE IF NOT EXISTS friendships (
+-- First, drop the table if it exists with wrong constraints
+DROP TABLE IF EXISTS friendships CASCADE;
+
+-- Friendships table with proper foreign key constraints
+CREATE TABLE friendships (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  requester_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  addressee_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  requester_id UUID NOT NULL,
+  addressee_id UUID NOT NULL,
   status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'accepted', 'declined', 'blocked')),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   UNIQUE(requester_id, addressee_id),
   CHECK (requester_id != addressee_id)
 );
+
+-- Add foreign key constraints with proper names
+ALTER TABLE friendships 
+ADD CONSTRAINT friendships_requester_id_fkey 
+FOREIGN KEY (requester_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+
+ALTER TABLE friendships 
+ADD CONSTRAINT friendships_addressee_id_fkey 
+FOREIGN KEY (addressee_id) REFERENCES auth.users(id) ON DELETE CASCADE;
 
 -- Enable RLS
 ALTER TABLE friendships ENABLE ROW LEVEL SECURITY;
@@ -45,9 +57,27 @@ CREATE INDEX IF NOT EXISTS idx_friendships_requester ON friendships(requester_id
 CREATE INDEX IF NOT EXISTS idx_friendships_addressee ON friendships(addressee_id);
 CREATE INDEX IF NOT EXISTS idx_friendships_status ON friendships(status);
 
--- Test the table (optional - you can run this to verify)
+-- Test the relationships (optional - you can run this to verify)
 -- SELECT 'Friendships table created successfully!' as message;
--- SELECT COUNT(*) as friendship_count FROM friendships;`
+-- SELECT COUNT(*) as friendship_count FROM friendships;
+
+-- Verify foreign key constraints exist
+SELECT 
+  tc.constraint_name, 
+  tc.table_name, 
+  kcu.column_name, 
+  ccu.table_name AS foreign_table_name,
+  ccu.column_name AS foreign_column_name 
+FROM 
+  information_schema.table_constraints AS tc 
+  JOIN information_schema.key_column_usage AS kcu
+    ON tc.constraint_name = kcu.constraint_name
+    AND tc.table_schema = kcu.table_schema
+  JOIN information_schema.constraint_column_usage AS ccu
+    ON ccu.constraint_name = tc.constraint_name
+    AND ccu.table_schema = tc.table_schema
+WHERE tc.constraint_type = 'FOREIGN KEY' 
+  AND tc.table_name='friendships';`
 
   const handleCopy = async () => {
     try {
@@ -77,8 +107,8 @@ CREATE INDEX IF NOT EXISTS idx_friendships_status ON friendships(status);
           </CardTitle>
         </div>
         <CardDescription className="text-blue-700 dark:text-blue-300">
-          To use the friends and social features, you need to run a database migration first. 
-          The error "Error fetching friendships: {}" means the friendships table doesn't exist in your database.
+          The error "PGRST200: Could not find a relationship between 'friendships' and 'profiles'" means 
+          the friendships table exists but the foreign key constraints are not properly set up.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -91,7 +121,8 @@ CREATE INDEX IF NOT EXISTS idx_friendships_status ON friendships(status);
             <div><strong>3.</strong> Copy and run the migration script below</div>
             <div><strong>4.</strong> Refresh this page</div>
             <div className="mt-3 p-2 bg-yellow-50 dark:bg-yellow-950/20 rounded border border-yellow-200 dark:border-yellow-800">
-              <strong>Note:</strong> If you see "Error fetching friendships: {}", it means the friendships table doesn't exist yet.
+              <strong>Note:</strong> If you see error code "PGRST200", it means the table exists but foreign key relationships are missing.
+              This script will recreate the table with proper constraints.
             </div>
           </AlertDescription>
         </Alert>

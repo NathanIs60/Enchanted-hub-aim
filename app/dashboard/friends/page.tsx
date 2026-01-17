@@ -57,46 +57,106 @@ export default async function FriendsPage() {
       errorMessage = "Friendships table does not exist"
     }
     
-    const { data: friendshipsData, error: friendshipsError } = await supabase
+    // Try without foreign key relationships first
+    const { data: basicFriendships, error: basicError } = await supabase
       .from("friendships")
-      .select(
-        `
-        *,
-        requester:profiles!friendships_requester_id_fkey(id, display_name, avatar_url, handle, is_verified),
-        addressee:profiles!friendships_addressee_id_fkey(id, display_name, avatar_url, handle, is_verified)
-      `,
-      )
+      .select("*")
       .or(`requester_id.eq.${user.id},addressee_id.eq.${user.id}`)
+    
+    console.log("Debug - Basic friendships query:", { basicFriendships, basicError })
+    
+    if (basicError) {
+      console.error("Basic friendships query failed:", basicError)
+      hasError = true
+      errorMessage = basicError.message || "Friendships query failed"
+    } else if (basicFriendships) {
+      // If basic query works, we can use it without joins
+      friendships = basicFriendships
+      console.log("Debug - Using basic friendships data:", friendships.length)
+    }
+    
+    if (basicError) {
+      console.error("Basic friendships query failed:", basicError)
+      hasError = true
+      errorMessage = basicError.message || "Friendships query failed"
+    } else if (basicFriendships) {
+      // If basic query works, we can use it without joins
+      friendships = basicFriendships
+      console.log("Debug - Using basic friendships data:", friendships.length)
+    }
+    
+    // Only try the complex query with joins if basic query worked
+    if (!hasError && !basicError) {
+      const { data: friendshipsData, error: friendshipsError } = await supabase
+        .from("friendships")
+        .select(
+          `
+          *,
+          requester:profiles!friendships_requester_id_fkey(id, display_name, avatar_url, handle, is_verified),
+          addressee:profiles!friendships_addressee_id_fkey(id, display_name, avatar_url, handle, is_verified)
+        `,
+        )
+        .or(`requester_id.eq.${user.id},addressee_id.eq.${user.id}`)
 
-    console.log("Debug - Friendships query result:", { friendshipsData, friendshipsError })
+      console.log("Debug - Complex friendships query result:", { friendshipsData, friendshipsError })
 
-    console.log("Debug - Friendships query result:", { friendshipsData, friendshipsError })
-
-    if (friendshipsError) {
-      console.error("Error fetching friendships:", friendshipsError)
-      console.error("Error type:", typeof friendshipsError)
-      console.error("Error constructor:", friendshipsError.constructor.name)
-      console.error("Error keys:", Object.keys(friendshipsError))
-      console.error("Error values:", Object.values(friendshipsError))
-      
-      // Try different ways to extract error info
-      const errorInfo = {
-        message: friendshipsError.message || friendshipsError.msg || friendshipsError.error || "Unknown error",
-        code: friendshipsError.code || friendshipsError.status || friendshipsError.statusCode,
-        details: friendshipsError.details || friendshipsError.detail,
-        hint: friendshipsError.hint,
-        full_error: JSON.stringify(friendshipsError, null, 2),
-        string_representation: String(friendshipsError),
-        error_toString: friendshipsError.toString()
+      if (friendshipsError) {
+        console.error("Error fetching friendships:", friendshipsError)
+        console.error("Error type:", typeof friendshipsError)
+        console.error("Error constructor:", friendshipsError.constructor.name)
+        console.error("Error keys:", Object.keys(friendshipsError))
+        console.error("Error values:", Object.values(friendshipsError))
+        
+        // Try different ways to extract error info
+        const errorInfo = {
+          message: friendshipsError.message || friendshipsError.msg || friendshipsError.error || "Unknown error",
+          code: friendshipsError.code || friendshipsError.status || friendshipsError.statusCode,
+          details: friendshipsError.details || friendshipsError.detail,
+          hint: friendshipsError.hint,
+          full_error: JSON.stringify(friendshipsError, null, 2),
+          string_representation: String(friendshipsError),
+          error_toString: friendshipsError.toString()
+        }
+        
+        console.error("Processed error details:", errorInfo)
+        
+        errorMessage = errorInfo.message
+        
+        // Check for various error conditions that indicate missing table or relationships
+        if (
+          friendshipsError.message?.includes("relation") && friendshipsError.message?.includes("does not exist") ||
+          friendshipsError.code === "42P01" ||
+          friendshipsError.code === "PGRST116" ||
+          friendshipsError.code === "PGRST200" || // Foreign key relationship not found
+          friendshipsError.message?.includes("does not exist") ||
+          friendshipsError.message?.includes("table") && friendshipsError.message?.includes("friendships") ||
+          friendshipsError.message?.includes("relationship between") && friendshipsError.message?.includes("profiles")
+        ) {
+          hasError = true
+        }
+      } else {
+        friendships = friendshipsData || []
+        console.log("Debug - Successfully fetched friendships with joins:", friendships.length)
+      }
+    }
       }
       
       console.error("Processed error details:", errorInfo)
       
       errorMessage = errorInfo.message
       
-      // Since we're getting an empty error object, assume it's a missing table
-      // This is likely a Supabase client issue where the table doesn't exist
-      hasError = true
+      // Check for various error conditions that indicate missing table or relationships
+      if (
+        friendshipsError.message?.includes("relation") && friendshipsError.message?.includes("does not exist") ||
+        friendshipsError.code === "42P01" ||
+        friendshipsError.code === "PGRST116" ||
+        friendshipsError.code === "PGRST200" || // Foreign key relationship not found
+        friendshipsError.message?.includes("does not exist") ||
+        friendshipsError.message?.includes("table") && friendshipsError.message?.includes("friendships") ||
+        friendshipsError.message?.includes("relationship between") && friendshipsError.message?.includes("profiles")
+      ) {
+        hasError = true
+      }
       
     } else {
       friendships = friendshipsData || []
