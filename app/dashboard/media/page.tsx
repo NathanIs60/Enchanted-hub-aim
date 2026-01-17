@@ -19,15 +19,27 @@ export default async function MediaPage({
     .eq("user_id", user?.id)
     .order("created_at", { ascending: false })
 
-  const { data: folders } = await supabase
-    .from("media_folders")
-    .select("*")
-    .eq("user_id", user?.id)
-    .order("sort_order", { ascending: true })
+  // Try to get folders, but handle gracefully if table doesn't exist
+  let folders: any[] = []
+  try {
+    const { data: foldersData, error: foldersError } = await supabase
+      .from("media_folders")
+      .select("*")
+      .eq("user_id", user?.id)
+      .order("sort_order", { ascending: true })
+    
+    if (!foldersError) {
+      folders = foldersData || []
+    } else {
+      console.warn("Folders table not available:", foldersError.message)
+    }
+  } catch (error) {
+    console.warn("Folders feature not available:", error)
+  }
 
   // Get current folder if specified
-  const currentFolder = folderId 
-    ? folders?.find(f => f.id === folderId) || null
+  const currentFolder = folderId && folders.length > 0
+    ? folders.find(f => f.id === folderId) || null
     : null
 
   return (
@@ -44,12 +56,12 @@ export default async function MediaPage({
             }
           </p>
         </div>
-        <AddResourceDialog folders={folders || []} />
+        <AddResourceDialog folders={folders} />
       </div>
 
       <MediaList 
         resources={resources || []} 
-        folders={folders || []}
+        folders={folders}
         currentFolder={currentFolder}
       />
     </div>

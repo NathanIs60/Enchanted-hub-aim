@@ -107,7 +107,13 @@ export function CreateFolderDialog() {
         sort_order: nextSortOrder,
       })
 
-      if (error) throw error
+      if (error) {
+        console.error("Supabase error:", error)
+        if (error.message.includes("relation") && error.message.includes("does not exist")) {
+          throw new Error("Folders feature is not set up. Please run the database migration script first.")
+        }
+        throw error
+      }
 
       toast({
         title: "Success",
@@ -120,7 +126,7 @@ export function CreateFolderDialog() {
       console.error("Error creating folder:", error)
       toast({
         title: "Error",
-        description: "Failed to create folder",
+        description: error instanceof Error ? error.message : "Failed to create folder",
         variant: "destructive",
       })
     } finally {

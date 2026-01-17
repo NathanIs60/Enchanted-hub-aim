@@ -6,6 +6,7 @@ import type { Resource, MediaFolder } from "@/lib/types/database"
 import { MediaCard } from "./media-card"
 import { FolderCard } from "./folder-card"
 import { CreateFolderDialog } from "./create-folder-dialog"
+import { MigrationInfo } from "./migration-info"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -69,7 +70,7 @@ export function MediaList({ resources, folders, currentFolder }: MediaListProps)
             </div>
           )}
         </div>
-        {showFolders && <CreateFolderDialog />}
+        {showFolders && folders.length >= 0 && <CreateFolderDialog />}
       </div>
 
       <div className="relative">
@@ -81,6 +82,11 @@ export function MediaList({ resources, folders, currentFolder }: MediaListProps)
           className="pl-9 bg-background/50"
         />
       </div>
+
+      {/* Show migration info if folders are not available */}
+      {showFolders && folders.length === 0 && (
+        <MigrationInfo />
+      )}
 
       {/* Show folders if not in a specific folder */}
       {showFolders && folders.length > 0 && (
