@@ -1,6 +1,7 @@
 "use client"
 
 import type React from "react"
+import type { MediaFolder } from "@/lib/types/database"
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
@@ -28,11 +29,16 @@ const resourceSchema = z.object({
   title: z.string().min(1, "Title is required"),
   url: z.string().url("Must be a valid URL"),
   resource_type: z.enum(["youtube", "article", "document", "other"]),
+  folder_id: z.string().optional(),
 })
 
 type ResourceFormData = z.infer<typeof resourceSchema>
 
-export function AddResourceDialog() {
+interface AddResourceDialogProps {
+  folders: MediaFolder[]
+}
+
+export function AddResourceDialog({ folders }: AddResourceDialogProps) {
   const [open, setOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
@@ -86,16 +92,25 @@ export function AddResourceDialog() {
         url: data.url,
         resource_type: data.resource_type,
         thumbnail_url: thumbnailUrl,
+        folder_id: data.folder_id || null,
       })
 
       if (error) throw error
 
-      toast.success("Resource added successfully")
+      toast({
+        title: "Success",
+        description: "Resource added successfully",
+      })
       reset()
       setOpen(false)
       router.refresh()
-    } catch {
-      toast.error("Failed to add resource")
+    } catch (error) {
+      console.error("Error adding resource:", error)
+      toast({
+        title: "Error",
+        description: "Failed to add resource",
+        variant: "destructive",
+      })
     } finally {
       setIsLoading(false)
     }
@@ -150,6 +165,41 @@ export function AddResourceDialog() {
                 <SelectItem value="article">Article</SelectItem>
                 <SelectItem value="document">Document</SelectItem>
                 <SelectItem value="other">Other</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="folder">Folder (Optional)</Label>
+            <Select onValueChange={(value) => setValue("folder_id", value === "none" ? undefined : value)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select folder" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">📁 Main Library</SelectItem>
+                {folders.map((folder) => (
+                  <SelectItem key={folder.id} value={folder.id}>
+                    <span className="mr-2">
+                      {folder.icon ? (
+                        {
+                          folder: "📁",
+                          star: "⭐",
+                          heart: "❤️",
+                          book: "📚",
+                          video: "🎥",
+                          music: "🎵",
+                          game: "🎮",
+                          work: "💼",
+                          study: "📖",
+                          clock: "🕐",
+                        }[folder.icon] || "📁"
+                      ) : (
+                        "📁"
+                      )}
+                    </span>
+                    {folder.name}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>

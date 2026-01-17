@@ -97,6 +97,20 @@ export interface Resource {
   linked_game_id: string | null
   is_watched: boolean
   watch_progress: number
+  folder_id: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface MediaFolder {
+  id: string
+  user_id: string
+  name: string
+  description: string | null
+  color: string
+  icon: string | null
+  parent_folder_id: string | null
+  sort_order: number
   created_at: string
   updated_at: string
 }
